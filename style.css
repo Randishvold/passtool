@@ -1,0 +1,65 @@
+/* Custom styles */
+/* Using Bootstrap's data-bs-theme="dark" handles most dark mode styling */
+
+#strengthIndicator {
+    font-weight: bold;
+}
+
+/* Zxcvbn score colors - Updated for better contrast on dark background */
+.alert-score-0, .alert-score-1 {
+    /* Weak - Red */
+    color: #f8d7da; /* Light red text */
+    background-color: #721c24; /* Dark red background */
+    border-color: #f5c2c7; /* Light red border */
+}
+
+.alert-score-2 {
+    /* Fair - Yellow */
+    color: #fff3cd; /* Light yellow text */
+    background-color: #664d03; /* Dark yellow background */
+    border-color: #ffecb5; /* Light yellow border */
+}
+
+.alert-score-3 {
+    /* Good - Green */
+    color: #d1e7dd; /* Light green text */
+    background-color: #0f5132; /* Dark green background */
+    border-color: #badbcc; /* Light green border */
+}
+
+.alert-score-4 {
+    /* Excellent - Darker Green */
+    color: #d1e7dd; /* Light green text */
+    background-color: #0a3622; /* Even darker green background */
+    border-color: #badbcc; /* Light green border */
+}
+
+/* Bootstrap secondary alert for default/empty state on dark theme */
+.alert-secondary {
+    color: #e2e3e5; /* Light grey text */
+    background-color: #3b4045; /* Dark grey background */
+    border-color: #d6d8db; /* Grey border */
+}
+
+
+/* Style for the feedback list from zxcvbn */
+#feedbackList ul {
+    list-style: disc;
+    padding-left: 20px;
+    margin-top: 10px;
+    color: #ced4da; /* Lighter grey text color for dark mode */
+}
+
+#feedbackList li {
+    margin-bottom: 5px;
+}
+
+/* Style for the range input label to match screenshot */
+.form-label span {
+    font-weight: bold;
+}
+
+/* Card body for password manager to make description flexible */
+.card-body.d-flex.flex-column .card-text {
+    flex-grow: 1; /* Allow description to take up space */
+}
