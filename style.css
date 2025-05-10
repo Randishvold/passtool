@@ -61,20 +61,6 @@ body {
 }
 
 /* Form Control Styling */
-.form-control,
-.form-select {
-    background-color: #1a1a1a;
-    color: #e0e0e0;
-    border-color: #444;
-}
-
-.form-control:focus,
-.form-select:focus {
-    background-color: #1a1a1a;
-    color: #e0e0e0;
-    border-color: #0d6efd; /* Focus outline color */
-    box-shadow: 0 0 0 0.25rem rgba(13, 110, 253, 0.25); /* Focus shadow */
-}
 
 
 /* Slider Styling (Optional adjustments) */
