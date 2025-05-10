@@ -76,20 +76,39 @@ body {
     box-shadow: 0 0 0 0.25rem rgba(13, 110, 253, 0.25); /* Focus shadow */
 }
 
+/* Checkbox Styling */
 .form-check-input {
     background-color: #444;
     border-color: #666;
+    /* Ensure default Bootstrap background image and other properties are allowed */
+    /* Don't explicitly set background-image here unless replacing Bootstrap's */
 }
 
 .form-check-input:checked {
     background-color: #0d6efd; /* Checked checkbox color */
     border-color: #0d6efd;
+    /* FIX: Ensure the checkmark icon is visible on the dark background color */
+    /* Bootstrap typically uses this filter to make the icon white */
+    filter: brightness(0) invert(1);
 }
 
 .form-check-input:focus {
      border-color: #0d6efd;
      box-shadow: 0 0 0 0.25rem rgba(13, 110, 253, 0.25);
 }
+
+/* Slider Styling (Optional adjustments) */
+/* You might need vendor prefixes for cross-browser compatibility */
+.form-range {
+    /* Example: adjust track/thumb color for dark theme */
+}
+.form-range::-webkit-slider-thumb {
+    /* color: #0d6efd; */
+}
+.form-range::-moz-range-thumb {
+     /* color: #0d6efd; */
+}
+
 
 /* Progress Bar Styling */
 .progress {
@@ -104,19 +123,25 @@ body {
 }
 
 /* Strength Indicator Colors based on score (0-4) */
-.strength-score-0 { background-color: #dc3545; /* Danger - Red */ }
-.strength-score-1 { background-color: #fd7e14; /* Warning - Orange */ }
-.strength-score-2 { background-color: #ffc107; /* Yellow - Neutral/Fair */ }
-.strength-score-3 { background-color: #198754; /* Success - Green */ }
-.strength-score-4 { background-color: #0d6efd; /* Primary - Blue/Strongest */ }
+.strength-score-0 { background-color: #dc3545; /* Danger - Red */ } /* Sangat Lemah */
+.strength-score-1 { background-color: #fd7e14; /* Warning - Orange */ } /* Lemah */
+.strength-score-2 { background-color: #ffc107; /* Yellow - Neutral/Fair */ } /* Sedang */
+.strength-score-3 { background-color: #198754; /* Success - Green */ } /* Kuat */
+.strength-score-4 { background-color: #0d6efd; /* Primary - Blue/Strongest */ } /* Sangat Kuat */
 
 
-/* Input Group Button Styling */
+/* Input Group Button Styling (Only Icons) */
 .input-group .btn {
     border-color: #444; /* Darker border for buttons in input group */
-    color: #b0b0b0; /* Default button text */
+    /* Remove default text color setting if using outline buttons */
+    /* color: #b0b0b0; */
+     display: flex; /* Use flexbox to center icon */
+     align-items: center;
+     justify-content: center;
+     padding: .375rem .75rem; /* Adjust padding if needed for icon only */
 }
 
+/* Specific outline button colors derived from Bootstrap variables */
 .input-group .btn-outline-primary {
      --bs-btn-color: #0d6efd;
      --bs-btn-border-color: #0d6efd;
@@ -128,12 +153,11 @@ body {
      --bs-btn-active-border-color: #0d6efd;
      --bs-btn-disabled-color: #0d6efd;
      --bs-btn-disabled-border-color: #0d6efd;
-     --bs-gradient: none;
 }
 
 .input-group .btn-outline-secondary {
-     --bs-btn-color: #b0b0b0;
-     --bs-btn-border-color: #444;
+     --bs-btn-color: #b0b0b0; /* Default icon color */
+     --bs-btn-border-color: #444; /* Border matches other dark elements */
      --bs-btn-hover-color: #fff;
      --bs-btn-hover-bg: #444;
      --bs-btn-hover-border-color: #444;
@@ -142,8 +166,8 @@ body {
      --bs-btn-active-border-color: #444;
      --bs-btn-disabled-color: #b0b0b0;
      --bs-btn-disabled-border-color: #444;
-     --bs-gradient: none;
 }
+
 
 /* Alert Styling */
 .alert {
@@ -158,8 +182,8 @@ body {
 
 .alert-warning {
     --bs-alert-bg: #3d3502; /* Darker warning background */
-    --bs-alert-color: #ffda6a;
-    --bs-alert-border-color: #ffc107;
+    --bs-alert-color: #ffda6a; /* Yellowish text */
+    --bs-alert-border-color: #ffc107; /* Yellow border */
 }
 
 /* Link color in dark mode */
@@ -169,4 +193,20 @@ a {
 
 a:hover {
     color: #fff;
+}
+
+/* Small text messages (like clipboard feedback) */
+small {
+    font-size: 0.875em; /* Standard small text size */
+    color: #b0b0b0; /* Match text-light-emphasis */
+    display: block; /* Ensure it takes its own line below the input-group */
+    margin-top: 0.25rem; /* Small space above */
+}
+
+/* Style for the text-warning span in educational section */
+.text-warning {
+    color: #ffc107 !important; /* Ensure Bootstrap's yellow color */
+}
+.text-danger {
+     color: #dc3545 !important; /* Ensure Bootstrap's red color */
 }

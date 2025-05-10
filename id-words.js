@@ -4,7 +4,7 @@
 // hanyalah contoh. Anda harus menggunakan daftar yang jauh lebih besar
 // (misalnya, 7000+ kata) dari sumber yang terpercaya dan relevan.
 
-const indonesianWords = [
+const rawWords = [
     "rumah", "makan", "jalan", "tidur", "minum", "baca", "tulis", "kerja",
     "sekolah", "kampus", "kota", "desa", "gunung", "laut", "sungai", "hutan",
     "burung", "ikan", "kucing", "anjing", "sapi", "ayam", "pohon", "bunga",
@@ -187,6 +187,11 @@ const indonesianWords = [
     "opini", "ilmu", "pengetahuan", "teknologi", "seni", "budaya", "filsafat", "agama"
 ];
 
-// Making it available globally or exporting if using modules.
-// For this simple structure, making it globally available is fine.
-window.indonesianWords = indonesianWords; 
+// Hapus duplikasi kata saat array didefinisikan
+const indonesianWords = Array.from(new Set(rawWords));
+
+// console.log(`Loaded ${rawWords.length} potential words, ${indonesianWords.length} unique words.`);
+
+// Variabel ini akan dapat diakses oleh script.js jika id-words.js dimuat duluan
+// Dalam struktur tanpa module bundler, ini cara umum berbagi data antar file JS
+// Untuk modularisasi yang tepat, gunakan ES modules (import/export)

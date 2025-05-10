@@ -4,13 +4,27 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Password Toolkit - Periksa, Buat, dan Amankan Password</title>
-    <!-- Bootstrap CSS -->
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
-    <!-- Bootstrap Icons -->
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">
+
+    <!-- SECURITY: Content Security Policy -->
+    <!-- Default to 'self', allowing scripts and styles only from the same origin -->
+    <!-- This is a strong starting point, adjust if needed for specific resources -->
+    <!-- NOTE: If using local zxcvbn.js and local Bootstrap files, 'self' is sufficient. -->
+    <!-- If you MUST use CDNs, you'll need to list them in script-src and style-src -->
+    <!-- Example allowing Bootstrap & zxcvbn CDN (LESS SECURE):
+         script-src 'self' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com;
+         style-src 'self' https://cdn.jsdelivr.net https://cdn.jsdelivr.net;
+         font-src 'self' https://cdn.jsdelivr.net;
+    -->
+     <meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' https://cdn.jsdelivr.net; script-src 'self' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com; font-src 'self' https://cdn.jsdelivr.net;">
+
+
+    <!-- Bootstrap CSS  -->
+    <link href="bootstrap.min.css" rel="stylesheet">
+    <!-- Bootstrap Icons (using CDN, remember CSP implications) -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.13.1/font/bootstrap-icons.min.css">
     <!-- Custom CSS -->
     <link rel="stylesheet" href="style.css">
-    <!-- zxcvbn library (local copy recommended for offline, using CDN for simplicity here) -->
+    <!-- zxcvbn library  -->
     <script src="zxcvbn.js"></script>
 </head>
 <body class="bg-dark text-light">
@@ -50,11 +64,15 @@
                         <div class="mb-3">
                             <label for="passwordInput" class="form-label">Masukkan Password:</label>
                             <div class="input-group">
-                                <!-- Set max length to 128 characters, a reasonable upper bound for most passwords -->
+                                <!-- Set max length to a practical limit, e.g., 128 chars -->
                                 <input type="password" class="form-control form-control-lg bg-dark text-light border-secondary" id="passwordInput" placeholder="Ketik atau tempel password di sini" maxlength="128">
-                                <button class="btn btn-outline-secondary" type="button" id="pastePasswordBtn" title="Tempel Password"><i class="bi bi-clipboard"></i></button>
-                                <button class="btn btn-outline-secondary" type="button" id="togglePasswordVisibilityBtn" title="Tampilkan/Sembunyikan Password"><i class="bi bi-eye-slash"></i></button>
+                                <!-- Only icon, added title -->
+                                <button class="btn btn-outline-secondary" type="button" id="pastePasswordBtn" title="Tempel Password"><i class="bi bi-clipboard-fill"></i></button> <!-- Using clipboard-fill for paste -->
+                                <!-- Only icon, added title, default eye-slash for password type -->
+                                <button class="btn btn-outline-secondary" type="button" id="togglePasswordVisibilityBtn" title="Tampilkan Password"><i class="bi bi-eye-slash"></i></button>
                             </div>
+                            <!-- Optional: Placeholder for clipboard message -->
+                            <small id="strengthClipboardMessage" class="form-text text-light-emphasis" style="display: none;"></small>
                         </div>
                         <div class="mb-3">
                             <label class="form-label">Kekuatan:</label>
@@ -82,7 +100,8 @@
                             <div class="col-md-6">
                                 <label for="passwordLength" class="form-label d-block">Panjang Password: <span id="passwordLengthValue">16</span></label>
                                 <!-- Use slider input -->
-                                <input type="range" class="form-range" id="passwordLength" value="16" min="12" max="64"> <!-- Max length set to 64 for slider practicality -->
+                                <!-- Set min to 12, max to a reasonable upper limit e.g. 64 -->
+                                <input type="range" class="form-range" id="passwordLength" value="16" min="12" max="64">
                             </div>
                             <div class="col-md-6">
                                 <label class="form-label d-block">Sertakan:</label>
@@ -119,6 +138,8 @@
                                 <button class="btn btn-outline-secondary" type="button" id="refreshPasswordBtn" title="Hasilkan Ulang"><i class="bi bi-arrow-repeat"></i></button>
                             </div>
                              <small class="form-text text-light-emphasis">Gunakan tombol <i class="bi bi-arrow-repeat"></i> untuk menghasilkan password baru.</small>
+                              <!-- Optional: Placeholder for clipboard message -->
+                            <small id="generatorClipboardMessage" class="form-text text-light-emphasis" style="display: none;"></small>
                              <div id="generatorAlert" class="alert alert-warning mt-2" style="display: none;">
                                 Mohon pilih setidaknya satu jenis karakter.
                              </div>
@@ -139,7 +160,8 @@
                             <div class="col-md-6">
                                 <label for="passphraseWordCount" class="form-label d-block">Jumlah Kata: <span id="passphraseWordCountValue">5</span></label>
                                 <!-- Use slider input -->
-                                <input type="range" class="form-range" id="passphraseWordCount" value="5" min="5" max="15"> <!-- Max words set to 15 for slider practicality -->
+                                <!-- Set min to 5, max to a reasonable limit e.g. 15-20 -->
+                                <input type="range" class="form-range" id="passphraseWordCount" value="5" min="5" max="20">
                             </div>
                             <div class="col-md-6">
                                 <label class="form-label d-block">Opsi:</label>
@@ -163,6 +185,14 @@
                                          <option value=",">Koma (,)</option>
                                          <option value="/">Garis Miring (/)</option>
                                          <option value="+">Plus (+)</option>
+                                         <option value="=">Sama Dengan (=)</option>
+                                         <option value="!">Tanda Seru (!)</option>
+                                         <option value="@">At (@)</option>
+                                         <option value="#">Pagar (#)</option>
+                                         <option value="$">Dolar ($)</option>
+                                         <option value="%">Persen (%)</option>
+                                         <option value="&">Ampersand (&)</option>
+                                         <option value="*">Bintang (*)</option>
                                      </select>
                                 </div>
                             </div>
@@ -171,7 +201,7 @@
                         <div class="mb-3">
                             <label for="generatedPassphrase" class="form-label">Passphrase Dihasilkan:</label>
                             <div class="input-group">
-                                <!-- Set max length to 256 characters, generous for a passphrase -->
+                                <!-- Set max length to a generous limit e.g., 256 chars -->
                                 <input type="text" class="form-control form-control-lg bg-dark text-light border-secondary" id="generatedPassphrase" readonly maxlength="256">
                                 <!-- Only icon, added title -->
                                 <button class="btn btn-outline-primary" type="button" id="copyPassphraseBtn" title="Salin Passphrase"><i class="bi bi-clipboard"></i></button>
@@ -179,6 +209,8 @@
                                 <button class="btn btn-outline-secondary" type="button" id="refreshPassphraseBtn" title="Hasilkan Ulang"><i class="bi bi-arrow-repeat"></i></button>
                             </div>
                              <small class="form-text text-light-emphasis">Gunakan tombol <i class="bi bi-arrow-repeat"></i> untuk menghasilkan passphrase baru.</small>
+                              <!-- Optional: Placeholder for clipboard message -->
+                            <small id="passphraseClipboardMessage" class="form-text text-light-emphasis" style="display: none;"></small>
                              <div id="passphraseAlert" class="alert alert-warning mt-2" style="display: none;">
                                 Daftar kata belum dimuat atau terlalu kecil.
                              </div>
@@ -199,12 +231,12 @@
 
                     <h6><i class="bi bi-patch-check me-2"></i>Tips Membuat Password Kuat:</h6>
                     <ul>
-                        <li>Gunakan panjang minimum 12-16 karakter, idealnya lebih panjang (passphrase bisa jauh lebih panjang).</li>
+                        <li>Gunakan panjang minimum <span class="text-warning">12-16 karakter</span>, idealnya lebih panjang (passphrase bisa jauh lebih panjang).</li>
                         <li>Kombinasikan huruf besar, huruf kecil, angka, dan simbol (untuk password acak).</li>
                         <li>Hindari informasi pribadi yang mudah ditebak (nama, tanggal lahir, nama hewan peliharaan).</li>
                         <li>Jangan gunakan kata-kata yang sangat umum atau urutan keyboard sederhana ("password", "123456", "qwerty").</li>
-                        <li>Pertimbangkan menggunakan *passphrase* (frasa yang panjang dan unik) yang lebih mudah diingat daripada string acak yang kompleks, tetapi tetap kuat.</li>
-                        <li>Gunakan password yang *unik* untuk setiap akun penting Anda.</li>
+                        <li>Pertimbangkan menggunakan *passphrase* (frasa yang panjang dan unik, misal "Benang-Hitam_Senja+543") yang lebih mudah diingat daripada string acak yang kompleks, tetapi tetap kuat.</li>
+                        <li>Gunakan password yang <span class="text-warning">*unik*</span> untuk setiap akun penting Anda. <span class="text-danger fw-bold">JANGAN gunakan password yang sama di banyak tempat!</span></li>
                     </ul>
 
                     <h6><i class="bi bi-lock me-2"></i>Tips Menyimpan Password Aman:</h6>
@@ -227,7 +259,7 @@
                         </li>
                         <li>
                             <strong>LastPass / 1Password / Dashlane:</strong>
-                             <p>Opsi komersial populer dengan fitur-fitur canggih dan antarmuka yang ramah pengguna. Pertimbangkan jika Anda membutuhkan sinkronisasi multi-perangkat dan fitur premium. Lakukan riset pribadi untuk memilih yang paling sesuai dengan kebutuhan dan anggaran Anda.</p>
+                             <p>Opsi komersial populer dengan fitur-fitur canggih dan antarmuka yang ramah pengguna. Pertimbangkan jika Anda membutuhkan sinkronisasi multi-perangkat dan fitur canggih. Lakukan riset pribadi untuk memilih yang paling sesuai dengan kebutuhan dan anggaran Anda.</p>
                         </li>
                     </ul>
                     <p class="card-text text-light-emphasis">Menggunakan pengelola password adalah salah satu langkah terbaik untuk meningkatkan keamanan digital Anda secara signifikan.</p>
@@ -238,10 +270,10 @@
     </div> <!-- End Container -->
 
     <!-- Bootstrap Bundle with Popper -->
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
-    <!-- Indonesian Words Data -->
+    <script src="bootstrap.bundle.min.js"></script>
+    <!-- Indonesian Words Data (Local file - must be loaded BEFORE script.js) -->
     <script src="id-words.js"></script>
-    <!-- Custom Script -->
+    <!-- Custom Script (Local file) -->
     <script src="script.js"></script>
 
 </body>
