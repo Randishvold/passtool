@@ -1,65 +1,172 @@
-/* Custom styles */
-/* Using Bootstrap's data-bs-theme="dark" handles most dark mode styling */
+/* Custom CSS for Dark Theme and Styling Overrides */
 
-#strengthIndicator {
+/* Base body styles for dark theme */
+body {
+    background-color: #121212; /* Even darker background */
+    color: #e0e0e0; /* Lighter text for contrast */
+}
+
+/* Override Bootstrap dark theme elements if needed */
+.bg-dark {
+     background-color: #1a1a1a !important; /* Darker background for dark components */
+}
+
+.bg-secondary {
+     background-color: #2c2c2c !important; /* Slightly lighter dark for cards etc. */
+}
+
+.text-light {
+    color: #e0e0e0 !important;
+}
+
+.text-light-emphasis {
+     color: #b0b0b0 !important; /* Subtler text */
+}
+
+.text-primary {
+    color: #0d6efd !important; /* Bootstrap blue accent */
+}
+
+.text-info {
+     color: #0dcaf0 !important; /* Bootstrap info for links */
+}
+
+
+.border-secondary {
+    border-color: #444 !important; /* Darker borders */
+}
+
+/* Nav Tabs Styling */
+.nav-tabs {
+    border-bottom-color: #444;
+}
+
+.nav-tabs .nav-link {
+    color: #b0b0b0; /* Inactive tab text */
+    border-color: transparent; /* No border by default */
+    margin-bottom: -1px; /* Align with border */
+}
+
+.nav-tabs .nav-link:hover {
+    border-color: transparent;
+    background-color: #2c2c2c;
+    color: #fff; /* Hover text color */
+}
+
+.nav-tabs .nav-link.active {
+    color: #fff; /* Active tab text */
+    background-color: #2c2c2c; /* Active tab background */
+    border-color: #444 #444 #2c2c2c; /* Borders to match active background */
+     border-bottom-color: #2c2c2c !important; /* Hide bottom border to match content */
+}
+
+/* Form Control Styling */
+.form-control,
+.form-select {
+    background-color: #1a1a1a;
+    color: #e0e0e0;
+    border-color: #444;
+}
+
+.form-control:focus,
+.form-select:focus {
+    background-color: #1a1a1a;
+    color: #e0e0e0;
+    border-color: #0d6efd; /* Focus outline color */
+    box-shadow: 0 0 0 0.25rem rgba(13, 110, 253, 0.25); /* Focus shadow */
+}
+
+.form-check-input {
+    background-color: #444;
+    border-color: #666;
+}
+
+.form-check-input:checked {
+    background-color: #0d6efd; /* Checked checkbox color */
+    border-color: #0d6efd;
+}
+
+.form-check-input:focus {
+     border-color: #0d6efd;
+     box-shadow: 0 0 0 0.25rem rgba(13, 110, 253, 0.25);
+}
+
+/* Progress Bar Styling */
+.progress {
+    background-color: #444; /* Background color for empty progress */
+}
+
+.progress-bar {
+    color: #1a1a1a; /* Text color inside progress bar */
     font-weight: bold;
+    text-align: center;
+     transition: width 0.6s ease, background-color 0.6s ease; /* Smooth transition */
 }
 
-/* Zxcvbn score colors - Updated for better contrast on dark background */
-.alert-score-0, .alert-score-1 {
-    /* Weak - Red */
-    color: #f8d7da; /* Light red text */
-    background-color: #721c24; /* Dark red background */
-    border-color: #f5c2c7; /* Light red border */
+/* Strength Indicator Colors based on score (0-4) */
+.strength-score-0 { background-color: #dc3545; /* Danger - Red */ }
+.strength-score-1 { background-color: #fd7e14; /* Warning - Orange */ }
+.strength-score-2 { background-color: #ffc107; /* Yellow - Neutral/Fair */ }
+.strength-score-3 { background-color: #198754; /* Success - Green */ }
+.strength-score-4 { background-color: #0d6efd; /* Primary - Blue/Strongest */ }
+
+
+/* Input Group Button Styling */
+.input-group .btn {
+    border-color: #444; /* Darker border for buttons in input group */
+    color: #b0b0b0; /* Default button text */
 }
 
-.alert-score-2 {
-    /* Fair - Yellow */
-    color: #fff3cd; /* Light yellow text */
-    background-color: #664d03; /* Dark yellow background */
-    border-color: #ffecb5; /* Light yellow border */
+.input-group .btn-outline-primary {
+     --bs-btn-color: #0d6efd;
+     --bs-btn-border-color: #0d6efd;
+     --bs-btn-hover-color: #fff;
+     --bs-btn-hover-bg: #0d6efd;
+     --bs-btn-hover-border-color: #0d6efd;
+     --bs-btn-active-color: #fff;
+     --bs-btn-active-bg: #0d6efd;
+     --bs-btn-active-border-color: #0d6efd;
+     --bs-btn-disabled-color: #0d6efd;
+     --bs-btn-disabled-border-color: #0d6efd;
+     --bs-gradient: none;
 }
 
-.alert-score-3 {
-    /* Good - Green */
-    color: #d1e7dd; /* Light green text */
-    background-color: #0f5132; /* Dark green background */
-    border-color: #badbcc; /* Light green border */
+.input-group .btn-outline-secondary {
+     --bs-btn-color: #b0b0b0;
+     --bs-btn-border-color: #444;
+     --bs-btn-hover-color: #fff;
+     --bs-btn-hover-bg: #444;
+     --bs-btn-hover-border-color: #444;
+     --bs-btn-active-color: #fff;
+     --bs-btn-active-bg: #444;
+     --bs-btn-active-border-color: #444;
+     --bs-btn-disabled-color: #b0b0b0;
+     --bs-btn-disabled-border-color: #444;
+     --bs-gradient: none;
 }
 
-.alert-score-4 {
-    /* Excellent - Darker Green */
-    color: #d1e7dd; /* Light green text */
-    background-color: #0a3622; /* Even darker green background */
-    border-color: #badbcc; /* Light green border */
+/* Alert Styling */
+.alert {
+     border-color: #444;
 }
 
-/* Bootstrap secondary alert for default/empty state on dark theme */
-.alert-secondary {
-    color: #e2e3e5; /* Light grey text */
-    background-color: #3b4045; /* Dark grey background */
-    border-color: #d6d8db; /* Grey border */
+.alert-info {
+    --bs-alert-bg: #1a1a1a;
+    --bs-alert-color: #b0b0b0;
+    --bs-alert-border-color: #444;
 }
 
-
-/* Style for the feedback list from zxcvbn */
-#feedbackList ul {
-    list-style: disc;
-    padding-left: 20px;
-    margin-top: 10px;
-    color: #ced4da; /* Lighter grey text color for dark mode */
+.alert-warning {
+    --bs-alert-bg: #3d3502; /* Darker warning background */
+    --bs-alert-color: #ffda6a;
+    --bs-alert-border-color: #ffc107;
 }
 
-#feedbackList li {
-    margin-bottom: 5px;
+/* Link color in dark mode */
+a {
+    color: #0dcaf0; /* Bootstrap info color */
 }
 
-/* Style for the range input label to match screenshot */
-.form-label span {
-    font-weight: bold;
-}
-
-/* Card body for password manager to make description flexible */
-.card-body.d-flex.flex-column .card-text {
-    flex-grow: 1; /* Allow description to take up space */
+a:hover {
+    color: #fff;
 }

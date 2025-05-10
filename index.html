@@ -1,252 +1,248 @@
 <!DOCTYPE html>
-<html lang="id" data-bs-theme="dark">
+<html lang="id">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Password Toolkit - Cek & Buat Password Aman</title>
+    <title>Password Toolkit - Periksa, Buat, dan Amankan Password</title>
     <!-- Bootstrap CSS -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
     <!-- Bootstrap Icons -->
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css" rel="stylesheet">
-    <!-- Custom CSS 
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">
+    <!-- Custom CSS -->
     <link rel="stylesheet" href="style.css">
-    <!-- Zxcvbn library for password strength checking -->
-    <script src="./zxcvbn.js"></script>
+    <!-- zxcvbn library (local copy recommended for offline, using CDN for simplicity here) -->
+    <script src="zxcvbn.js"></script>
 </head>
 <body class="bg-dark text-light">
 
-    <div class="container py-4">
-        <h1 class="text-center mb-4">Password Toolkit</h1>
-        <p class="text-center lead mb-5">Alat bantu untuk memeriksa dan menghasilkan password serta passphrase yang kuat.</p>
+    <div class="container mt-4 mb-5">
+        <h1 class="text-center mb-4 text-primary">Password Toolkit</h1>
+        <p class="text-center lead text-secondary">Alat bantu untuk memeriksa, menghasilkan, dan mempelajari password yang kuat.</p>
 
         <!-- Navigation Tabs -->
-        <ul class="nav nav-tabs nav-justified mb-4" id="myTab" role="tablist">
+        <ul class="nav nav-tabs nav-justified mb-4" id="featureTabs" role="tablist">
             <li class="nav-item" role="presentation">
                 <button class="nav-link active" id="strength-tab" data-bs-toggle="tab" data-bs-target="#strength" type="button" role="tab" aria-controls="strength" aria-selected="true">
-                    <i class="bi bi-shield-lock me-1"></i> Kekuatan Password
+                    <i class="bi bi-shield-check me-1"></i> Pemeriksa Kekuatan
                 </button>
             </li>
             <li class="nav-item" role="presentation">
                 <button class="nav-link" id="generator-tab" data-bs-toggle="tab" data-bs-target="#generator" type="button" role="tab" aria-controls="generator" aria-selected="false">
-                    <i class="bi bi-gear me-1"></i> Generator Password
+                    <i class="bi bi-key me-1"></i> Generator Password
                 </button>
             </li>
             <li class="nav-item" role="presentation">
                 <button class="nav-link" id="passphrase-tab" data-bs-toggle="tab" data-bs-target="#passphrase" type="button" role="tab" aria-controls="passphrase" aria-selected="false">
-                    <i class="bi bi-chat-text me-1"></i> Generator Passphrase
+                    <i class="bi bi-card-text me-1"></i> Generator Passphrase
                 </button>
             </li>
         </ul>
 
         <!-- Tab Content -->
-        <div class="tab-content" id="myTabContent">
+        <div class="tab-content" id="featureTabsContent">
 
-            <!-- 1. Password Strength Checker Tab -->
+            <!-- Password Strength Checker -->
             <div class="tab-pane fade show active" id="strength" role="tabpanel" aria-labelledby="strength-tab">
-                <div class="card bg-dark border-secondary">
+                <div class="card bg-secondary text-light">
                     <div class="card-body">
-                        <h2 class="card-title">Periksa Kekuatan Password Anda</h2>
+                        <h5 class="card-title text-primary">Pemeriksa Kekuatan Password</h5>
+                        <p class="card-text text-light-emphasis">Masukkan password Anda untuk memeriksa kekuatannya (input tidak dikirim ke server).</p>
                         <div class="mb-3">
                             <label for="passwordInput" class="form-label">Masukkan Password:</label>
                             <div class="input-group">
-                                <input type="password" class="form-control bg-dark text-light border-secondary" id="passwordInput" placeholder="Ketik password di sini...">
-                                <button class="btn btn-outline-secondary" type="button" id="togglePasswordVisibility">
-                                    <i class="bi bi-eye"></i>
-                                </button>
+                                <!-- Set max length to 128 characters, a reasonable upper bound for most passwords -->
+                                <input type="password" class="form-control form-control-lg bg-dark text-light border-secondary" id="passwordInput" placeholder="Ketik atau tempel password di sini" maxlength="128">
+                                <button class="btn btn-outline-secondary" type="button" id="pastePasswordBtn" title="Tempel Password"><i class="bi bi-clipboard"></i></button>
+                                <button class="btn btn-outline-secondary" type="button" id="togglePasswordVisibilityBtn" title="Tampilkan/Sembunyikan Password"><i class="bi bi-eye-slash"></i></button>
                             </div>
                         </div>
                         <div class="mb-3">
                             <label class="form-label">Kekuatan:</label>
-                            <div id="strengthIndicator" class="alert mb-2" role="alert">
-                                Password belum dimasukkan.
+                            <div class="progress bg-dark" style="height: 25px;">
+                                <div id="strengthIndicator" class="progress-bar" role="progressbar" style="width: 0%;" aria-valuenow="0" aria-valuemin="0" aria-valuemax="4">
+                                    <span id="strengthLabel">Belum Diperiksa</span>
+                                </div>
                             </div>
                         </div>
-                         <!-- Removed Crack Time Display -->
-                        <div id="feedbackList">
-                            <!-- Feedback details from zxcvbn will be inserted here -->
+                        <div id="strengthFeedback" class="alert alert-info bg-dark text-light border-secondary mt-3" role="alert" style="display: none;">
+                            <!-- Feedback will be inserted here -->
                         </div>
                     </div>
                 </div>
             </div>
 
-            <!-- 2. Password Generator Tab -->
+            <!-- Password Generator -->
             <div class="tab-pane fade" id="generator" role="tabpanel" aria-labelledby="generator-tab">
-                 <div class="card bg-dark border-secondary">
-                     <div class="card-body">
-                         <h2 class="card-title">Generator Password Aman</h2>
-                         <div class="mb-3">
-                             <label for="passwordLengthInput" class="form-label">Panjang Password: <span id="passwordLengthValue">16</span></label>
-                             <input type="range" class="form-range" id="passwordLengthInput" value="16" min="12" max="64">
-                         </div>
-                         <div class="mb-3">
-                              <label class="form-label">Sertakan Karakter:</label>
-                             <div class="form-check">
-                                 <input class="form-check-input" type="checkbox" value="" id="includeLowercase" checked>
-                                 <label class="form-check-label" for="includeLowercase">
-                                     Huruf Kecil (a-z)
-                                 </label>
+                <div class="card bg-secondary text-light">
+                    <div class="card-body">
+                        <h5 class="card-title text-primary">Generator Password</h5>
+                        <p class="card-text text-light-emphasis">Buat password acak yang kuat berdasarkan kriteria Anda.</p>
+
+                        <div class="row g-3 mb-3 align-items-center">
+                            <div class="col-md-6">
+                                <label for="passwordLength" class="form-label d-block">Panjang Password: <span id="passwordLengthValue">16</span></label>
+                                <!-- Use slider input -->
+                                <input type="range" class="form-range" id="passwordLength" value="16" min="12" max="64"> <!-- Max length set to 64 for slider practicality -->
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label d-block">Sertakan:</label>
+                                <div>
+                                    <div class="form-check form-check-inline">
+                                        <input class="form-check-input" type="checkbox" id="includeUppercase" value="uppercase" checked>
+                                        <label class="form-check-label" for="includeUppercase">Huruf Besar (A-Z)</label>
+                                    </div>
+                                    <div class="form-check form-check-inline">
+                                        <input class="form-check-input" type="checkbox" id="includeLowercase" value="lowercase" checked>
+                                        <label class="form-check-label" for="includeLowercase">Huruf Kecil (a-z)</label>
+                                    </div>
+                                </div>
+                                <div>
+                                     <div class="form-check form-check-inline">
+                                        <input class="form-check-input" type="checkbox" id="includeNumbers" value="numbers" checked>
+                                        <label class="form-check-label" for="includeNumbers">Angka (0-9)</label>
+                                    </div>
+                                    <div class="form-check form-check-inline">
+                                        <input class="form-check-input" type="checkbox" id="includeSymbols" value="symbols" checked>
+                                        <label class="form-check-label" for="includeSymbols">Simbol (!@#$%)</label>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="generatedPassword" class="form-label">Password Dihasilkan:</label>
+                            <div class="input-group">
+                                <input type="text" class="form-control form-control-lg bg-dark text-light border-secondary" id="generatedPassword" readonly>
+                                <!-- Only icon, added title -->
+                                <button class="btn btn-outline-primary" type="button" id="copyPasswordBtn" title="Salin Password"><i class="bi bi-clipboard"></i></button>
+                                <!-- Only icon, added title -->
+                                <button class="btn btn-outline-secondary" type="button" id="refreshPasswordBtn" title="Hasilkan Ulang"><i class="bi bi-arrow-repeat"></i></button>
+                            </div>
+                             <small class="form-text text-light-emphasis">Gunakan tombol <i class="bi bi-arrow-repeat"></i> untuk menghasilkan password baru.</small>
+                             <div id="generatorAlert" class="alert alert-warning mt-2" style="display: none;">
+                                Mohon pilih setidaknya satu jenis karakter.
                              </div>
-                             <div class="form-check">
-                                 <input class="form-check-input" type="checkbox" value="" id="includeUppercase" checked>
-                                 <label class="form-check-label" for="includeUppercase">
-                                     Huruf Besar (A-Z)
-                                 </label>
-                             </div>
-                             <div class="form-check">
-                                 <input class="form-check-input" type="checkbox" value="" id="includeNumbers" checked>
-                                 <label class="form-check-label" for="includeNumbers">
-                                     Angka (0-9)
-                                 </label>
-                             </div>
-                             <div class="form-check">
-                                 <input class="form-check-input" type="checkbox" value="" id="includeSymbols" checked>
-                                 <label class="form-check-label" for="includeSymbols">
-                                     Simbol (!@#$%^&*)
-                                 </label>
-                             </div>
-                         </div>
-                         <button id="generatePasswordBtn" class="btn btn-primary w-100 mb-3">
-                             <i class="bi bi-arrow-clockwise me-1"></i> Generate Password
-                         </button>
-                         <div class="input-group">
-                             <input type="text" class="form-control bg-dark text-light border-secondary" id="generatedPasswordInput" readonly placeholder="Klik 'Generate Password'">
-                             <button class="btn btn-outline-secondary" type="button" id="copyPasswordBtn">
-                                 <i class="bi bi-clipboard"></i> Salin
-                             </button>
-                         </div>
-                     </div>
-                 </div>
+                        </div>
+
+                    </div>
+                </div>
             </div>
 
-            <!-- 3. Indonesian Passphrase Generator Tab -->
+            <!-- Passphrase Generator -->
             <div class="tab-pane fade" id="passphrase" role="tabpanel" aria-labelledby="passphrase-tab">
-                 <div class="card bg-dark border-secondary">
-                     <div class="card-body">
-                         <h2 class="card-title">Generator Passphrase Bahasa Indonesia</h2>
-                         <div class="mb-3">
-                             <label for="passphraseWordCountInput" class="form-label">Jumlah Kata: <span id="passphraseWordCountValue">5</span></label>
-                             <input type="range" class="form-range" id="passphraseWordCountInput" value="5" min="4" max="10">
-                         </div>
-                         <div class="mb-3">
-                            <label for="wordSeparatorSelect" class="form-label">Pemisah Kata:</label>
-                            <select class="form-select bg-dark text-light border-secondary" id="wordSeparatorSelect">
-                                <option value="-">Tanda Hubung (-)</option>
-                                <option value=" ">Spasi ( )</option>
-                                <option value=".">Titik (.)</option>
-                                <option value="_">Underscore (_)</option>
-                                <option value=",">Koma (,)</option>
-                                <option value=":">Titik Dua (:)</option>
-                                <option value=";">Titik Koma (;)</option>
-                                <option value="|">Pipa (|)</option>
-                            </select>
-                         </div>
-                         <div class="mb-3">
-                              <label class="form-label">Sertakan Dalam Passphrase:</label>
-                              <div class="form-check">
-                                  <input class="form-check-input" type="checkbox" value="" id="capitalizeWords" checked>
-                                  <label class="form-check-label" for="capitalizeWords">
-                                      Huruf Kapital Acak (Beberapa Kata)
-                                  </label>
-                              </div>
-                              <div class="form-check">
-                                  <input class="form-check-input" type="checkbox" value="" id="addNumber">
-                                  <label class="form-check-label" for="addNumber">
-                                      Tambahkan Angka Acak (Di Antara Kata)
-                                  </label>
-                              </div>
-                         </div>
-                         <button id="generatePassphraseBtn" class="btn btn-primary w-100 mb-3">
-                             <i class="bi bi-arrow-clockwise me-1"></i> Generate Passphrase
-                         </button>
-                         <div class="input-group">
-                             <input type="text" class="form-control bg-dark text-light border-secondary" id="generatedPassphraseInput" readonly placeholder="Klik 'Generate Passphrase'">
-                             <button class="btn btn-outline-secondary" type="button" id="copyPassphraseBtn">
-                                 <i class="bi bi-clipboard"></i> Salin
-                             </button>
-                         </div>
-                         <p class="form-text mt-3 text-muted"><i class="bi bi-info-circle me-1"></i> Passphrase dari kata-kata acak lebih mudah diingat dan seringkali lebih kuat daripada password acak.</p>
-                     </div>
-                 </div>
-             </div>
+                <div class="card bg-secondary text-light">
+                    <div class="card-body">
+                        <h5 class="card-title text-primary">Generator Passphrase Bahasa Indonesia</h5>
+                        <p class="card-text text-light-emphasis">Buat passphrase yang mudah diingat namun kuat menggunakan daftar kata Bahasa Indonesia.</p>
+
+                         <div class="row g-3 mb-3 align-items-center">
+                            <div class="col-md-6">
+                                <label for="passphraseWordCount" class="form-label d-block">Jumlah Kata: <span id="passphraseWordCountValue">5</span></label>
+                                <!-- Use slider input -->
+                                <input type="range" class="form-range" id="passphraseWordCount" value="5" min="5" max="15"> <!-- Max words set to 15 for slider practicality -->
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label d-block">Opsi:</label>
+                                <div>
+                                     <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" id="passphraseCapitalize" value="capitalize" checked>
+                                        <label class="form-check-label" for="passphraseCapitalize">Huruf Kapital di Awal Kata</label>
+                                    </div>
+                                     <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" id="passphraseAddNumber" value="addnumber">
+                                        <label class="form-check-label" for="passphraseAddNumber">Sertakan Angka Acak</label>
+                                    </div>
+                                </div>
+                                <div class="mt-2">
+                                     <label for="passphraseSeparator" class="form-label">Pemisah Kata:</label>
+                                     <select class="form-select bg-dark text-light border-secondary" id="passphraseSeparator">
+                                         <option value=" " selected>Spasi ( )</option>
+                                         <option value="-">Tanda Hubung (-)</option>
+                                         <option value="_">Garis Bawah (_)</option>
+                                         <option value=".">Titik (.)</option>
+                                         <option value=",">Koma (,)</option>
+                                         <option value="/">Garis Miring (/)</option>
+                                         <option value="+">Plus (+)</option>
+                                     </select>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="generatedPassphrase" class="form-label">Passphrase Dihasilkan:</label>
+                            <div class="input-group">
+                                <!-- Set max length to 256 characters, generous for a passphrase -->
+                                <input type="text" class="form-control form-control-lg bg-dark text-light border-secondary" id="generatedPassphrase" readonly maxlength="256">
+                                <!-- Only icon, added title -->
+                                <button class="btn btn-outline-primary" type="button" id="copyPassphraseBtn" title="Salin Passphrase"><i class="bi bi-clipboard"></i></button>
+                                <!-- Only icon, added title -->
+                                <button class="btn btn-outline-secondary" type="button" id="refreshPassphraseBtn" title="Hasilkan Ulang"><i class="bi bi-arrow-repeat"></i></button>
+                            </div>
+                             <small class="form-text text-light-emphasis">Gunakan tombol <i class="bi bi-arrow-repeat"></i> untuk menghasilkan passphrase baru.</small>
+                             <div id="passphraseAlert" class="alert alert-warning mt-2" style="display: none;">
+                                Daftar kata belum dimuat atau terlalu kecil.
+                             </div>
+                        </div>
+
+                    </div>
+                </div>
+            </div>
 
         </div> <!-- End Tab Content -->
 
-        <hr class="my-5 border-secondary">
+        <!-- Educational Content -->
+        <div class="mt-5">
+            <div class="card bg-secondary text-light">
+                <div class="card-body">
+                    <h5 class="card-title text-primary"><i class="bi bi-info-circle me-2"></i>Tips Keamanan Password</h5>
+                    <p class="card-text text-light-emphasis">Menciptakan dan mengelola password yang kuat adalah langkah krusial untuk melindungi identitas online Anda. Berikut beberapa tips:</p>
 
-        <!-- Educational Section -->
-        <section id="education">
-            <h2 class="text-center mb-4">Tips Keamanan Password & Passphrase</h2>
+                    <h6><i class="bi bi-patch-check me-2"></i>Tips Membuat Password Kuat:</h6>
+                    <ul>
+                        <li>Gunakan panjang minimum 12-16 karakter, idealnya lebih panjang (passphrase bisa jauh lebih panjang).</li>
+                        <li>Kombinasikan huruf besar, huruf kecil, angka, dan simbol (untuk password acak).</li>
+                        <li>Hindari informasi pribadi yang mudah ditebak (nama, tanggal lahir, nama hewan peliharaan).</li>
+                        <li>Jangan gunakan kata-kata yang sangat umum atau urutan keyboard sederhana ("password", "123456", "qwerty").</li>
+                        <li>Pertimbangkan menggunakan *passphrase* (frasa yang panjang dan unik) yang lebih mudah diingat daripada string acak yang kompleks, tetapi tetap kuat.</li>
+                        <li>Gunakan password yang *unik* untuk setiap akun penting Anda.</li>
+                    </ul>
 
-            <div class="row">
-                <div class="col-md-6 mb-4">
-                    <div class="card bg-dark border-secondary h-100">
-                        <div class="card-header border-secondary">
-                            <i class="bi bi-lightbulb me-2"></i> Tips Membuat Password/Passphrase Kuat
-                        </div>
-                        <div class="card-body">
-                            <ul>
-                                <li><strong>Panjang adalah Kunci:</strong> Gunakan panjang minimal 12 karakter untuk password, atau minimal 5 kata acak untuk passphrase. Semakin panjang, semakin sulit ditebak.</li>
-                                <li><strong>Variasi Karakter/Kata:</strong> Gabungkan berbagai jenis karakter (huruf, angka, simbol) untuk password, atau gunakan kata-kata yang tidak terkait untuk passphrase.</li>
-                                <li><strong>Hindari Informasi Pribadi:</strong> Jangan gunakan nama, tanggal lahir, nama hewan peliharaan, atau kata-kata umum yang mudah ditebak.</li>
-                                <li><strong>Gunakan Passphrase Acak:</strong> Frasa unik yang terdiri dari beberapa kata acak seringkali lebih mudah diingat dan lebih kuat daripada password tunggal yang kompleks.</li>
-                                <li><strong>Jangan Gunakan Pola Keyboard:</strong> Hindari urutan kunci atau kata yang berdekatan.</li>
-                            </ul>
-                        </div>
-                    </div>
-                </div>
-                <div class="col-md-6 mb-4">
-                     <div class="card bg-dark border-secondary h-100">
-                         <div class="card-header border-secondary">
-                             <i class="bi bi-save me-2"></i> Tips Menyimpan Password Aman
-                         </div>
-                         <div class="card-body">
-                             <ul>
-                                 <li><strong>Jangan Gunakan Password yang Sama:</strong> Gunakan password unik untuk setiap akun penting. Jika satu akun diretas, semua akun lain yang menggunakan password yang sama akan berisiko.</li>
-                                 <li><strong>Gunakan Password Manager:</strong> Ini adalah cara paling aman dan praktis untuk menyimpan password yang rumit. Password manager menyimpan semua password Anda yang rumit dalam database terenkripsi dan hanya memerlukan satu master password untuk mengaksesnya.</li>
-                                 <li><strong>Aktifkan Autentikasi Dua Faktor (2FA):</strong> Jika tersedia, selalu aktifkan 2FA. Ini menambahkan lapisan keamanan ekstra di luar password.</li>
-                                 <li><strong>Waspada terhadap Phishing:</strong> Jangan pernah memasukkan password Anda di situs web yang mencurigakan atau merespons permintaan password melalui email atau pesan teks.</li>
-                                 <li><strong>Perbarui Password Penting Secara Berkala:</strong> Meskipun menggunakan password manager mengurangi urgensi ini, mengganti password penting sesekali tetap merupakan praktik yang baik, terutama jika ada berita tentang kebocoran data.</li>
-                             </ul>
-                         </div>
-                     </div>
+                    <h6><i class="bi bi-lock me-2"></i>Tips Menyimpan Password Aman:</h6>
+                     <p class="card-text text-light-emphasis">Jangan pernah menulis password Anda di tempat yang mudah diakses (catatan di meja, file teks di komputer). Cara teraman adalah menggunakan pengelola password (password manager).</p>
+
+                    <h6><i class="bi bi-app-indicator me-2"></i>Rekomendasi Pengelola Password (Password Manager):</h6>
+                    <p class="card-text text-light-emphasis">Pengelola password adalah aplikasi atau layanan yang menyimpan semua password Anda yang kompleks dan unik dalam database terenkripsi yang aman, dan hanya membutuhkan satu *master password* untuk membukanya. Mereka juga seringkali dapat menghasilkan password kuat secara otomatis. Berikut beberapa rekomendasi yang aman, cross-platform, dan mudah digunakan:</p>
+                    <ul>
+                        <li>
+                            <strong>Bitwarden:</strong>
+                            <p>Gratis, open-source, tersedia di berbagai platform (browser, desktop, mobile), dan memiliki fitur yang sangat lengkap bahkan di versi gratis. Sangat direkomendasikan untuk keamanan dan aksesibilitas. <a href="https://bitwarden.com/" target="_blank" class="text-decoration-none text-info">Situs Resmi Bitwarden <i class="bi bi-box-arrow-up-right"></i></a></p>
+                        </li>
+                        <li>
+                            <strong>Proton Pass:</strong>
+                            <p>Dari pengembang ProtonMail yang dikenal fokus pada privasi. Menawarkan fitur yang kuat dan terintegrasi dengan ekosistem privasi Proton. Tersedia versi gratis dengan batasan. <a href="https://proton.me/pass" target="_blank" class="text-decoration-none text-info">Situs Resmi Proton Pass <i class="bi bi-box-arrow-up-right"></i></a></p>
+                        </li>
+                         <li>
+                            <strong>KeePassXC:</strong>
+                            <p>Gratis, open-source, dan desktop-based (tidak berbasis cloud secara default, data disimpan lokal). Sangat aman dan dapat diandalkan, tetapi mungkin kurang praktis untuk sinkronisasi antar perangkat dibandingkan solusi cloud. <a href="https://keepassxc.org/" target="_blank" class="text-decoration-none text-info">Situs Resmi KeePassXC <i class="bi bi-box-arrow-up-right"></i></a></p>
+                        </li>
+                        <li>
+                            <strong>LastPass / 1Password / Dashlane:</strong>
+                             <p>Opsi komersial populer dengan fitur-fitur canggih dan antarmuka yang ramah pengguna. Pertimbangkan jika Anda membutuhkan sinkronisasi multi-perangkat dan fitur premium. Lakukan riset pribadi untuk memilih yang paling sesuai dengan kebutuhan dan anggaran Anda.</p>
+                        </li>
+                    </ul>
+                    <p class="card-text text-light-emphasis">Menggunakan pengelola password adalah salah satu langkah terbaik untuk meningkatkan keamanan digital Anda secara signifikan.</p>
                 </div>
             </div>
+        </div>
 
-            <h3 class="text-center mt-5 mb-3">Rekomendasi Password Manager Aman</h3>
-            <div class="row justify-content-center">
-                <div class="col-md-5 col-sm-8 mb-4"> <!-- Increased column width slightly -->
-                    <div class="card bg-dark border-secondary h-100">
-                         <!-- Removed Logo -->
-                        <div class="card-body d-flex flex-column">
-                            <h5 class="card-title">Bitwarden</h5>
-                            <p class="card-text flex-grow-1">
-                                Bitwarden adalah password manager open-source yang menawarkan fitur lengkap secara gratis untuk penggunaan pribadi. Tersedia di berbagai platform (web, desktop, mobile, extension browser). Menyimpan password dalam vault terenkripsi kuat. Pilihan tepat bagi yang mencari solusi aman, transparan, dan hemat biaya.
-                            </p>
-                            <a href="https://bitwarden.com/" target="_blank" class="btn btn-outline-primary mt-3"><i class="bi bi-box-arrow-up-right me-1"></i> Kunjungi Situs Resmi</a>
-                        </div>
-                    </div>
-                </div>
-                 <div class="col-md-5 col-sm-8 mb-4"> <!-- Increased column width slightly -->
-                     <div class="card bg-dark border-secondary h-100">
-                          <!-- Removed Logo -->
-                         <div class="card-body d-flex flex-column">
-                             <h5 class="card-title">Proton Pass</h5>
-                             <p class="card-text flex-grow-1">
-                                 Dikembangkan oleh tim di balik ProtonMail (layanan email terenkripsi), Proton Pass sangat fokus pada privasi dan keamanan end-to-end. Menawarkan fitur penyimpanan password, catatan aman, dan alias email. Tersedia di banyak platform dan memiliki paket gratis dengan fitur dasar yang kuat.
-                             </p>
-                             <a href="https://proton.me/pass" target="_blank" class="btn btn-outline-primary mt-3"><i class="bi bi-box-arrow-up-right me-1"></i> Kunjungi Situs Resmi</a>
-                         </div>
-                     </div>
-                 </div>
-                 <!-- Add more recommendations if needed, following this structure -->
-            </div>
-        </section>
-
-    </div> <!-- End container -->
+    </div> <!-- End Container -->
 
     <!-- Bootstrap Bundle with Popper -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
-    <!-- Custom JavaScript -->
+    <!-- Indonesian Words Data -->
+    <script src="id-words.js"></script>
+    <!-- Custom Script -->
     <script src="script.js"></script>
+
 </body>
 </html>

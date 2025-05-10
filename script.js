@@ -1,407 +1,511 @@
+// script.js
+// Main JavaScript logic for Password Toolkit
+
 document.addEventListener('DOMContentLoaded', () => {
+    // Initialize Bootstrap Tabs
+    const triggerTabList = document.querySelectorAll('#featureTabs button');
+    triggerTabList.forEach(triggerEl => {
+      const tabTrigger = new bootstrap.Tab(triggerEl);
 
-    // Helper for getting a cryptographically secure random index within a range [0, range-1]
-    function cryptoRandom(range) {
-        if (range <= 0) return 0;
-        const maxUint32 = 0xFFFFFFFF;
-        // Find the largest multiple of 'range' that fits in Uint32
-        const maxValidValue = Math.floor(maxUint32 / range) * range;
+      triggerEl.addEventListener('click', event => {
+        event.preventDefault();
+        tabTrigger.show();
+      });
+    });
 
-        let randomBytes = new Uint32Array(1);
-        let randomValue;
+    // --- Helper Functions ---
 
+    /**
+     * Securely generate a random integer within a range [min, max].
+     * Uses window.crypto.getRandomValues to generate cryptographically secure random numbers.
+     * Handles potential modulo bias.
+     * @param {number} min - The minimum value (inclusive).
+     * @param {number} max - The maximum value (inclusive).
+     * @returns {number} A secure random integer.
+     */
+    function secureRandomInt(min, max) {
+        const range = max - min + 1;
+        if (range <= 0) {
+             console.error("Invalid range for secureRandomInt");
+             return min; // Or handle error appropriately
+        }
+
+        // Determine the number of bytes needed to cover the range
+        let bytesNeeded = Math.ceil(Math.log2(range) / 8);
+        // Determine the largest possible value that fits within those bytes
+        let maxUintValue = Math.pow(256, bytesNeeded) - 1;
+        // Calculate the largest value that is a multiple of the range and fits within bytesNeeded
+        let maxValidValue = Math.floor(maxUintValue / range) * range;
+
+        let randomBytes = new Uint8Array(bytesNeeded);
+        let randomNumber;
+
+        // Keep generating random numbers until we get one within the valid range to avoid bias
         do {
             window.crypto.getRandomValues(randomBytes);
-            randomValue = randomBytes[0];
-        } while (randomValue >= maxValidValue); // Discard values that would cause modulo bias
+            randomNumber = 0;
+            for (let i = 0; i < bytesNeeded; i++) {
+                randomNumber = (randomNumber << 8) + randomBytes[i];
+            }
+        } while (randomNumber >= maxValidValue);
 
-        return randomValue % range;
+        // Map the valid random number to the desired range
+        return min + (randomNumber % range);
+    }
+
+    /**
+     * Securely shuffle an array using the Fisher-Yates (Knuth) algorithm.
+     * Uses secureRandomInt for randomness.
+     * @param {Array} array - The array to shuffle.
+     * @returns {Array} The shuffled array.
+     */
+    function secureShuffleArray(array) {
+        const shuffledArray = [...array]; // Create a copy to avoid modifying original
+        for (let i = shuffledArray.length - 1; i > 0; i--) {
+            // Use secureRandomInt to get an index from 0 to i
+            const j = secureRandomInt(0, i);
+            // Swap elements
+            [shuffledArray[i], shuffledArray[j]] = [shuffledArray[j], shuffledArray[i]];
+        }
+        return shuffledArray;
+    }
+
+    /**
+     * Copies text to the clipboard.
+     * Uses the Clipboard API. Requires user interaction (e.g., button click).
+     * @param {string} text - The text to copy.
+     * @returns {Promise<void>} A promise that resolves when the text is copied.
+     */
+    async function copyToClipboard(text) {
+        if (!navigator.clipboard || !navigator.clipboard.writeText) {
+            console.warn("Clipboard API not available.");
+            alert('Browser Anda tidak mendukung salin ke clipboard.');
+            return;
+        }
+        try {
+            await navigator.clipboard.writeText(text);
+            // console.log('Text copied to clipboard'); // Optional feedback
+        } catch (err) {
+            console.error('Failed to copy text: ', err);
+            alert('Gagal menyalin teks ke clipboard.');
+        }
+    }
+
+    /**
+     * Pastes text from the clipboard into an input field.
+     * Uses the Clipboard API. Requires user interaction (e.g., button click).
+     * @param {HTMLInputElement} inputElement - The input element to paste into.
+     * @returns {Promise<string|null>} A promise that resolves with the pasted text or null if failed.
+     */
+    async function pasteFromClipboard(inputElement) {
+         if (!navigator.clipboard || !navigator.clipboard.readText) {
+              console.warn("Clipboard API not available for reading.");
+              alert('Browser Anda tidak mendukung tempel dari clipboard.');
+              return null;
+         }
+         try {
+              const text = await navigator.clipboard.readText();
+              // Basic validation: ensure it's primarily string content
+              // Clipboard API readText already returns a string.
+              // We can add more complex checks if needed, but for a password field,
+              // pasting potentially complex strings is expected.
+              // Limit is handled by maxlength attribute on input.
+              inputElement.value = text.substring(0, inputElement.maxLength); // Apply maxlength explicitly on paste just in case
+              // Trigger input event manually so listeners (like strength checker) react
+              const event = new Event('input', { bubbles: true });
+              inputElement.dispatchEvent(event);
+              // console.log('Text pasted from clipboard'); // Optional feedback
+              return text;
+         } catch (err) {
+              console.error('Failed to paste text: ', err);
+               // This often happens if permission is denied or clipboard is empty/non-text
+              alert('Gagal menempelkan teks dari clipboard. Pastikan Anda mengizinkan akses clipboard dan clipboard berisi teks.');
+              return null;
+         }
     }
 
 
-    // --- Feature 1: Password Strength Checker ---
+    // --- Password Strength Checker ---
     const passwordInput = document.getElementById('passwordInput');
     const strengthIndicator = document.getElementById('strengthIndicator');
-    // Removed crackTimeDisplay variable
-    const feedbackList = document.getElementById('feedbackList');
-    const togglePasswordVisibilityBtn = document.getElementById('togglePasswordVisibility');
-
-    if (passwordInput && strengthIndicator && feedbackList && togglePasswordVisibilityBtn) {
-        passwordInput.addEventListener('input', () => {
-            const password = passwordInput.value;
-
-            // Clear previous state
-            strengthIndicator.className = 'alert mb-2'; // Reset Bootstrap classes
-            strengthIndicator.textContent = 'Password belum dimasukkan.'; // Default text
-            // Removed crackTimeDisplay.textContent = '-';
-            feedbackList.innerHTML = ''; // Clear feedback list
+    const strengthLabel = document.getElementById('strengthLabel');
+    const strengthFeedback = document.getElementById('strengthFeedback');
+    const pastePasswordBtn = document.getElementById('pastePasswordBtn');
+    const togglePasswordVisibilityBtn = document.getElementById('togglePasswordVisibilityBtn');
+    const togglePasswordVisibilityIcon = togglePasswordVisibilityBtn ? togglePasswordVisibilityBtn.querySelector('i') : null;
 
 
-            if (password.length === 0) {
-                strengthIndicator.classList.add('alert-secondary');
-                return; // Exit if input is empty
-            }
+    // Function to update strength display
+    function updateStrengthDisplay() {
+        const password = passwordInput.value;
 
-            // Use zxcvbn to evaluate strength
-            const result = zxcvbn(password); // result IS THE OBJECT
+        if (password.length === 0) {
+            // Reset state
+            strengthIndicator.style.width = '0%';
+            strengthIndicator.className = 'progress-bar'; // Reset classes
+            strengthLabel.textContent = 'Belum Diperiksa';
+            strengthIndicator.setAttribute('aria-valuenow', 0);
+            strengthFeedback.style.display = 'none';
+            strengthFeedback.innerHTML = '';
+            return;
+        }
 
-            const score = result.score; // 0-4
-
-            // Update strength indicator text and color based on score
-            let strengthText = '';
-            let alertClass = '';
-            switch (score) {
-                case 0:
-                    strengthText = 'Sangat Lemah';
-                    alertClass = 'alert-score-0';
-                    break;
-                case 1:
-                    strengthText = 'Lemah';
-                    alertClass = 'alert-score-1';
-                    break;
-                case 2:
-                    strengthText = 'Sedang';
-                    alertClass = 'alert-score-2';
-                    break;
-                case 3:
-                    strengthText = 'Kuat';
-                    alertClass = 'alert-score-3';
-                    break;
-                case 4:
-                    strengthText = 'Sangat Kuat';
-                    alertClass = 'alert-score-4';
-                    break;
-                default: // Handle unexpected scores
-                    strengthText = 'Tidak Diketahui';
-                    alertClass = 'alert-secondary';
-            }
-
-            strengthIndicator.classList.add(alertClass);
-            strengthIndicator.textContent = `Kekuatan: ${strengthText}`;
-
-            // Removed Display crack time logic
-
-            // Display feedback/suggestions from zxcvbn
-            const suggestions = result.feedback.suggestions;
-            const warning = result.feedback.warning;
-
-            if (warning || (suggestions && suggestions.length > 0)) {
-                const feedbackUl = document.createElement('ul');
-                if (warning) {
-                    const liWarning = document.createElement('li');
-                    liWarning.innerHTML = `<strong class="text-warning">Peringatan:</strong> ${warning}`;
-                    feedbackUl.appendChild(liWarning);
-                }
-                if (suggestions && suggestions.length > 0) {
-                    suggestions.forEach(suggestion => {
-                        const li = document.createElement('li');
-                        li.textContent = suggestion;
-                        feedbackUl.appendChild(li);
-                    });
-                }
-                feedbackList.appendChild(feedbackUl);
-            }
-        });
-
-        // Toggle password visibility
-         togglePasswordVisibilityBtn.addEventListener('click', () => {
-             const type = passwordInput.getAttribute('type') === 'password' ? 'text' : 'password';
-             passwordInput.setAttribute('type', type);
-
-             // Toggle eye icon
-             const icon = togglePasswordVisibilityBtn.querySelector('i');
-             icon.classList.toggle('bi-eye');
-             icon.classList.toggle('bi-eye-slash');
-         });
+        // Use zxcvbn to estimate strength
+        // zxcvbn scores: 0 (terrible) -> 4 (excellent)
+        // Add common names/data as options for zxcvbn to check against (optional but improves accuracy)
+        // For this example, we won't pass user-specific data, relying on zxcvbn's built-in dictionaries.
+        const result = zxcvbn(password);
+        const score = result.score;
+        // const crackTimeDisplay = result.crack_times_display.online_throttling_100_per_hour; // Example: estimate against throttled online attacks
+         const crackTimeDisplay = result.crack_times_display.offline_slow_hashing_1e4_per_second; // Often more relevant estimate
 
 
-    } else {
-         console.error("Elements for Password Strength Checker not found.");
-    }
+        // Determine strength level and color based on score
+        let strengthText = 'Sangat Lemah';
+        let indicatorClass = 'strength-score-0'; // See style.css for colors
+
+        if (score === 1) {
+            strengthText = 'Lemah';
+            indicatorClass = 'strength-score-1';
+        } else if (score === 2) {
+            strengthText = 'Sedang';
+            indicatorClass = 'strength-score-2';
+        } else if (score === 3) {
+            strengthText = 'Kuat';
+            indicatorClass = 'strength-score-3';
+        } else if (score === 4) {
+            strengthText = 'Sangat Kuat';
+            indicatorClass = 'strength-score-4';
+        }
+
+        // Update UI
+        strengthIndicator.style.width = ((score + 1) / 5) * 100 + '%'; // Scale 0-4 score to 0-100% width
+        strengthIndicator.className = 'progress-bar ' + indicatorClass; // Apply color class
+        strengthLabel.textContent = strengthText;
+        strengthIndicator.setAttribute('aria-valuenow', score);
 
 
-    // --- Feature 2: Password Generator ---
-    const passwordLengthInput = document.getElementById('passwordLengthInput');
-    const passwordLengthValueDisplay = document.getElementById('passwordLengthValue');
-    const includeLowercase = document.getElementById('includeLowercase');
-    const includeUppercase = document.getElementById('includeUppercase');
-    const includeNumbers = document.getElementById('includeNumbers');
-    const includeSymbols = document.getElementById('includeSymbols');
-    const generatePasswordBtn = document.getElementById('generatePasswordBtn');
-    const generatedPasswordInput = document.getElementById('generatedPasswordInput');
-    const copyPasswordBtn = document.getElementById('copyPasswordBtn');
+        // Display feedback
+        let feedbackHTML = `<strong>Estimasi Waktu Tebakan Offline (Lambat):</strong> ${crackTimeDisplay}<br>`;
 
-    // Define character sets
-    const lower = 'abcdefghijklmnopqrstuvwxyz';
-    const upper = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
-    const numbers = '0123456789';
-    const symbols = '!@#$%^&*()_+[]{}|;:,.<>?/~`';
-
-    if (passwordLengthInput && passwordLengthValueDisplay && includeLowercase && includeUppercase && includeNumbers && includeSymbols && generatePasswordBtn && generatedPasswordInput && copyPasswordBtn) {
-
-         // Update display value when slider moves
-         passwordLengthInput.addEventListener('input', () => {
-             passwordLengthValueDisplay.textContent = passwordLengthInput.value;
-         });
-
-        // Function to generate password
-        function generatePassword() {
-            const length = parseInt(passwordLengthInput.value, 10);
-            let characterPool = '';
-            const mustInclude = [];
-
-            if (includeLowercase.checked) {
-                characterPool += lower;
-                mustInclude.push(lower[cryptoRandom(lower.length)]);
-            }
-            if (includeUppercase.checked) {
-                characterPool += upper;
-                 mustInclude.push(upper[cryptoRandom(upper.length)]);
-            }
-            if (includeNumbers.checked) {
-                characterPool += numbers;
-                 mustInclude.push(numbers[cryptoRandom(numbers.length)]);
-            }
-            if (includeSymbols.checked) {
-                characterPool += symbols;
-                 mustInclude.push(symbols[cryptoRandom(symbols.length)]);
-            }
-
-            // Basic validation
-            if (length < 12) {
-                alert('Panjang password minimal adalah 12 karakter.');
-                return '';
-            }
-            if (characterPool.length === 0) {
-                alert('Pilih setidaknya satu jenis karakter.');
-                return '';
-            }
-             if (length < mustInclude.length) {
-                 alert(`Panjang password minimal harus sama dengan jumlah jenis karakter yang dipilih (${mustInclude.length}).`);
-                 return '';
-             }
-
-            let passwordArray = new Array(length);
-            const poolLength = characterPool.length;
-
-             // Place the 'must include' characters randomly
-             const usedIndices = new Set();
-             mustInclude.forEach(char => {
-                 let randomIndex;
-                 do {
-                     randomIndex = cryptoRandom(length);
-                 } while(usedIndices.has(randomIndex));
-                 passwordArray[randomIndex] = char;
-                 usedIndices.add(randomIndex);
+        // Add zxcvbn suggestions if available
+        if (result.feedback && result.feedback.suggestions && result.feedback.suggestions.length > 0) {
+             feedbackHTML += '<strong>Saran:</strong><ul>';
+             result.feedback.suggestions.forEach(suggestion => {
+                  feedbackHTML += `<li>${suggestion}</li>`;
              });
-
-            // Fill the remaining positions with random characters from the pool
-            for (let i = 0; i < length; i++) {
-                if (passwordArray[i] === undefined) {
-                     const randomPoolIndex = cryptoRandom(poolLength);
-                     passwordArray[i] = characterPool[randomPoolIndex];
-                }
+             feedbackHTML += '</ul>';
+        } else if (result.feedback && result.feedback.warning) {
+             feedbackHTML += `<strong>Peringatan:</strong> ${result.feedback.warning}`;
+        } else {
+            // Default message if no specific feedback from zxcvbn
+            if (score < 4) {
+                 feedbackHTML += '<strong>Saran Umum:</strong> Gunakan kombinasi huruf besar/kecil, angka, dan simbol. Tingkatkan panjang password. Hindari kata-kata umum atau pola yang mudah ditebak.';
+            } else {
+                 feedbackHTML += 'Password ini terlihat sangat kuat. Pertimbangkan untuk menggunakan pengelola password.';
             }
-
-            // Shuffle the array
-             for (let i = passwordArray.length - 1; i > 0; i--) {
-                 const j = cryptoRandom(i + 1);
-                 [passwordArray[i], passwordArray[j]] = [passwordArray[j], passwordArray[i]];
-             }
-
-            return passwordArray.join('');
         }
 
 
-        // Event listener for generate button
-        generatePasswordBtn.addEventListener('click', () => {
-            const password = generatePassword();
-            if (password) {
-                generatedPasswordInput.value = password;
-            }
-        });
-
-        // Event listener for copy button
-        copyPasswordBtn.addEventListener('click', () => {
-            const password = generatedPasswordInput.value;
-            if (password) {
-                navigator.clipboard.writeText(password)
-                    .then(() => {
-                        const originalHtml = copyPasswordBtn.innerHTML; // Store full HTML including text
-                        copyPasswordBtn.innerHTML = '<i class="bi bi-check-lg"></i> Tersalin!';
-                        setTimeout(() => {
-                             copyPasswordBtn.innerHTML = originalHtml; // Restore full HTML
-                        }, 2000);
-                    })
-                    .catch(err => {
-                        console.error('Gagal menyalin password:', err);
-                        alert('Gagal menyalin password. Silakan salin manual.');
-                    });
-            } else {
-                 alert('Tidak ada password yang bisa disalin.');
-            }
-        });
-
-        // Initial display of slider value
-        passwordLengthValueDisplay.textContent = passwordLengthInput.value;
-
-    } else {
-        console.error("Elements for Password Generator not found.");
+        strengthFeedback.innerHTML = feedbackHTML;
+        strengthFeedback.style.display = 'block';
     }
 
 
-    // --- Feature 3: Indonesian Passphrase Generator ---
-    const passphraseWordCountInput = document.getElementById('passphraseWordCountInput');
-    const passphraseWordCountValueDisplay = document.getElementById('passphraseWordCountValue');
-    const wordSeparatorSelect = document.getElementById('wordSeparatorSelect');
-    const capitalizeWords = document.getElementById('capitalizeWords'); // Checkbox for random capitalization
-    const addNumber = document.getElementById('addNumber'); // Checkbox for adding number
-    const generatePassphraseBtn = document.getElementById('generatePassphraseBtn');
-    const generatedPassphraseInput = document.getElementById('generatedPassphraseInput');
-    const copyPassphraseBtn = document.getElementById('copyPassphraseBtn');
+    if (passwordInput && strengthIndicator && strengthLabel && strengthFeedback && pastePasswordBtn && togglePasswordVisibilityBtn && typeof zxcvbn !== 'undefined') {
+        // Event listener for input changes (typing or pasting via keyboard)
+        passwordInput.addEventListener('input', updateStrengthDisplay);
 
-    // --- Indonesian Word List ---
-    // NOTE: This list is still relatively small for demonstration.
-    // For a strong passphrase generator, use a list with thousands of words (e.g., EFF Diceware list).
-    // (Keeping the same extended list as before)
-    const indonesianWords = [
-        "aku", "kamu", "dia", "kita", "mereka", "adalah", "dan", "atau", "tetapi", "namun",
-        "di", "ke", "dari", "pada", "untuk", "dengan", "tanpa", "rumah", "jalan", "kota",
-        "desa", "gunung", "laut", "sungai", "pohon", "bunga", "buah", "makanan", "minuman", "baju",
-        "celana", "sepatu", "mobil", "motor", "sepeda", "kereta", "pesawat", "kapal", "buku", "pena",
-        "pensil", "kertas", "meja", "kursi", "pintu", "jendela", "atap", "lantai", "dinding", "langit",
-        "bumi", "bulan", "matahari", "bintang", "awan", "hujan", "angin", "panas", "dingin", "besar",
-        "kecil", "panjang", "pendek", "luas", "sempit", "berat", "ringan", "cepat", "lambat", "baru",
-        "lama", "baik", "buruk", "cantik", "jelek", "kaya", "miskin", "senang", "sedih", "marah",
-        "takut", "berani", "pintar", "bodoh", "rajin", "malas", "tidur", "makan", "minum", "jalan",
-        "lari", "duduk", "berdiri", "bicara", "mendengar", "melihat", "membaca", "menulis", "bekerja", "belajar",
-        "bermain", "menyanyi", "menari", "tertawa", "menangis", "datang", "pergi", "pulang", "masuk", "keluar",
-        "naik", "turun", "buka", "tutup", "mulai", "selesai", "cari", "temu", "beli", "jual",
-        "buat", "rusak", "benar", "salah", "ya", "tidak", "tolong", "terima", "kasih", "sama",
-        "pagi", "siang", "sore", "malam", "hari", "minggu", "bulan", "tahun", "sekarang", "nanti",
-        "kemarin", "besok", "di sini", "di sana", "kapan", "mengapa", "bagaimana", "apa", "siapa", "mana",
-        "satu", "dua", "tiga", "empat", "lima", "enam", "tujuh", "delapan", "sembilan", "sepuluh",
-         "apel", "jeruk", "pisang", "mangga", "stroberi", "naga", "durian", "rambutan", "salak", "jambu",
-         "wortel", "bayam", "kangkung", "tomat", "cabai", "bawang", "jahe", "kunyit", "lengkuas", "sereh",
-         "ayam", "sapi", "kambing", "ikan", "udang", "cumi", "telur", "susu", "keju", "roti",
-         "nasi", "mie", "goreng", "rebus", "bakar", "sate", "sup", "soto", "rendang", "gulai",
-         "sambal", "kerupuk", "kopi", "teh", "jus", "sirup", "es", "panas", "hangat", "dingin",
-         "merah", "biru", "hijau", "kuning", "putih", "hitam", "cokelat", "ungu", "pink", "abu-abu",
-         "indah", "jelek", "bagus", "jelek", "bersih", "kotor", "terang", "gelap", "kaya", "miskin",
-         "senang", "sedih", "ramai", "sepi", "jauh", "dekat", "depan", "belakang", "atas", "bawah",
-         "dalam", "luar", "kiri", "kanan", "tengah", "pinggir", "pojok", "bundar", "persegi", "segitiga",
-         "garis", "titik", "lingkaran", "kotak", "bola", "kubus", "kaca", "kayu", "batu", "pasir",
-         "tanah", "air", "api", "udara", "asap", "abu", "debu", "lumpur", "karat", "lumut",
-         "lampu", "listrik", "radio", "televisi", "komputer", "ponsel", "internet", "program", "kode", "desain",
-         "warna", "suara", "gambar", "video", "musik", "lagu", "film", "baca", "tulis", "hitung",
-         "gambar", "lukis", "ukir", "tenun", "jahit", "masak", "bakar", "goreng", "rebus", "kukus",
-         "jemur", "angin", "angin", "gelombang", "ombak", "pasang", "surut", "pantai", "pulau", "tanjung",
-         "teluk", "selat", "samudra", "benua", "negara", "provinsi", "kabupaten", "kecamatan", "desa", "kota",
-         "pusat", "pinggir", "utara", "selatan", "timur", "barat", "tenggara", "timur", "laut", "darat"
-    ];
-    const wordListLength = indonesianWords.length;
+        // Event listener for Paste button
+        pastePasswordBtn.addEventListener('click', () => {
+             pasteFromClipboard(passwordInput);
+             // updateStrengthDisplay is triggered by the 'input' event dispatched by pasteFromClipboard
+        });
+
+        // Event listener for Visibility toggle button
+        togglePasswordVisibilityBtn.addEventListener('click', () => {
+            const type = passwordInput.getAttribute('type') === 'password' ? 'text' : 'password';
+            passwordInput.setAttribute('type', type);
+
+            // Toggle icon
+            if (type === 'text') {
+                togglePasswordVisibilityIcon.classList.remove('bi-eye-slash');
+                togglePasswordVisibilityIcon.classList.add('bi-eye');
+                 togglePasswordVisibilityBtn.setAttribute('title', 'Sembunyikan Password');
+            } else {
+                togglePasswordVisibilityIcon.classList.remove('bi-eye');
+                togglePasswordVisibilityIcon.classList.add('bi-eye-slash');
+                 togglePasswordVisibilityBtn.setAttribute('title', 'Tampilkan Password');
+            }
+        });
+
+         // Initial check if there's a default value or autocompleted value
+         // setTimeout to allow browser autofill to complete
+         setTimeout(updateStrengthDisplay, 100);
+
+    } else {
+         console.error("Password Strength Checker elements not found or zxcvbn not loaded.");
+         if (typeof zxcvbn === 'undefined') {
+              alert("Library zxcvbn gagal dimuat. Pemeriksa kekuatan password mungkin tidak berfungsi.");
+         }
+    }
 
 
-    if (passphraseWordCountInput && passphraseWordCountValueDisplay && wordSeparatorSelect && capitalizeWords && addNumber && generatePassphraseBtn && generatedPassphraseInput && copyPassphraseBtn) {
+    // --- Password Generator ---
+    const passwordLengthInput = document.getElementById('passwordLength');
+    const passwordLengthValueSpan = document.getElementById('passwordLengthValue'); // Span to display value
+    const includeUppercaseCheckbox = document.getElementById('includeUppercase');
+    const includeLowercaseCheckbox = document.getElementById('includeLowercase');
+    const includeNumbersCheckbox = document.getElementById('includeNumbers');
+    const includeSymbolsCheckbox = document.getElementById('includeSymbols');
+    const generatedPasswordInput = document.getElementById('generatedPassword');
+    const copyPasswordBtn = document.getElementById('copyPasswordBtn');
+    const refreshPasswordBtn = document.getElementById('refreshPasswordBtn');
+    const generatorAlert = document.getElementById('generatorAlert');
 
-         // Update display value when slider moves
-         passphraseWordCountInput.addEventListener('input', () => {
-             passphraseWordCountValueDisplay.textContent = passphraseWordCountInput.value;
+    const uppercaseChars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+    const lowercaseChars = 'abcdefghijklmnopqrstuvwxyz';
+    const numberChars = '0123456789';
+    const symbolChars = '!@#$%^&*()_+-=[]{};\':"\\|,.<>/?`~'; // Extended common symbols
+
+    // Function to generate password
+    function generatePassword() {
+        const length = parseInt(passwordLengthInput.value, 10);
+        const includeUppercase = includeUppercaseCheckbox.checked;
+        const includeLowercase = includeLowercaseCheckbox.checked;
+        const includeNumbers = includeNumbersCheckbox.checked;
+        const includeSymbols = includeSymbolsCheckbox.checked;
+
+        let characterPool = '';
+        let guaranteedChars = []; // Array to hold at least one of each selected type
+
+        if (includeUppercase) {
+            characterPool += uppercaseChars;
+            guaranteedChars.push(uppercaseChars[secureRandomInt(0, uppercaseChars.length - 1)]);
+        }
+        if (includeLowercase) {
+            characterPool += lowercaseChars;
+            guaranteedChars.push(lowercaseChars[secureRandomInt(0, lowercaseChars.length - 1)]);
+        }
+        if (includeNumbers) {
+            characterPool += numberChars;
+            guaranteedChars.push(numberChars[secureRandomInt(0, numberChars.length - 1)]);
+        }
+        if (includeSymbols) {
+            characterPool += symbolChars;
+            guaranteedChars.push(symbolChars[secureRandomInt(0, symbolChars.length - 1)]);
+        }
+
+        // Hide alert if it was showing
+        generatorAlert.style.display = 'none';
+
+        // Check if any character type is selected
+        if (characterPool === '') {
+            generatedPasswordInput.value = '';
+             generatorAlert.textContent = 'Mohon pilih setidaknya satu jenis karakter.';
+             generatorAlert.style.display = 'block';
+            return;
+        }
+
+        // Adjust length if it's less than the number of required character types
+        let actualLength = Math.max(length, guaranteedChars.length);
+         if (actualLength > parseInt(passwordLengthInput.max, 10)) {
+             actualLength = parseInt(passwordLengthInput.max, 10);
+         }
+         // Update slider value if it was less than guaranteed chars length (only if user input)
+         // For automatic generation on slider/checkbox change, this adjustment ensures minimum length
+         if (length < guaranteedChars.length) {
+             generatorAlert.textContent = `Panjang password disesuaikan menjadi ${actualLength} untuk menyertakan semua jenis karakter yang dipilih.`;
+             generatorAlert.style.display = 'block';
+             passwordLengthInput.value = actualLength; // Update slider position
+             passwordLengthValueSpan.textContent = actualLength; // Update displayed value
+         }
+
+
+        let password = '';
+        // Add guaranteed characters first
+        password += guaranteedChars.join('');
+
+        // Fill the rest of the length with random characters from the pool
+        const remainingLength = actualLength - guaranteedChars.length;
+
+        for (let i = 0; i < remainingLength; i++) {
+             const randomIndex = secureRandomInt(0, characterPool.length - 1);
+             password += characterPool[randomIndex];
+        }
+
+         // Shuffle the password to mix the guaranteed characters
+        password = secureShuffleArray(password.split('')).join('');
+
+        generatedPasswordInput.value = password;
+    }
+
+    // Add event listeners for generator
+    if (passwordLengthInput && passwordLengthValueSpan && includeUppercaseCheckbox && includeLowercaseCheckbox && includeNumbersCheckbox && includeSymbolsCheckbox && generatedPasswordInput && copyPasswordBtn && refreshPasswordBtn && generatorAlert) {
+
+        // Update displayed length value when slider moves and regenerate
+        passwordLengthInput.addEventListener('input', () => {
+             passwordLengthValueSpan.textContent = passwordLengthInput.value;
+             generatePassword(); // Regenerate automatically on slider change
+        });
+
+        // Regenerate when character type checkboxes change
+         [includeUppercaseCheckbox, includeLowercaseCheckbox, includeNumbersCheckbox, includeSymbolsCheckbox].forEach(checkbox => {
+             checkbox.addEventListener('change', generatePassword);
          });
 
+        // Regenerate on button click
+        refreshPasswordBtn.addEventListener('click', generatePassword);
 
-        // Function to generate passphrase
-        function generatePassphrase() {
-            const wordCount = parseInt(passphraseWordCountInput.value, 10);
-            const separator = wordSeparatorSelect.value;
-            const doRandomCapitalize = capitalizeWords.checked; // Use a clearer variable name
-            const doAddNumber = addNumber.checked; // Use a clearer variable name
-
-            // Validation
-            if (wordCount < parseInt(passphraseWordCountInput.min, 10)) {
-                alert(`Jumlah kata minimal untuk passphrase adalah ${passphraseWordCountInput.min}.`);
-                return '';
-            }
-            if (wordListLength === 0) {
-                 alert('Daftar kata Bahasa Indonesia tidak ditemukan atau kosong.');
-                 return '';
-            }
-
-            const passphraseWords = [];
-            // Use cryptoRandom helper for word indices
-            for (let i = 0; i < wordCount; i++) {
-                 const randomIndex = cryptoRandom(wordListLength);
-                 let word = indonesianWords[randomIndex];
-
-                 // Apply random capitalization per word IF doRandomCapitalize is checked
-                 if (doRandomCapitalize && cryptoRandom(2) === 1) { // 50% chance per word
-                      word = word.charAt(0).toUpperCase() + word.slice(1).toLowerCase();
-                 } else {
-                     // Ensure lowercase if not capitalized
-                     word = word.toLowerCase();
-                 }
-                 passphraseWords.push(word);
-            }
-
-            // Add random number if checked
-            if (doAddNumber) {
-                 // Generate a random number (e.g., 2-4 digits, 10-9999)
-                 // Let's use 3-4 digits for slightly better complexity
-                 const randomNumber = 100 + cryptoRandom(9900); // Range 100-9999
-
-                 // Choose a random position to insert the number within the words array (including before the first word or after the last)
-                 // Array length is wordCount. Valid indices for splice insertion are 0 to wordCount.
-                 const insertIndex = cryptoRandom(wordCount + 1);
-
-                 // Insert the number (as a string) at the random index
-                 passphraseWords.splice(insertIndex, 0, randomNumber.toString());
-             }
-
-
-             // Join the final array (which might now include a number string) with the selected separator
-            const passphrase = passphraseWords.join(separator);
-
-
-            return passphrase;
-        }
-
-
-         // Event listener for generate button
-        generatePassphraseBtn.addEventListener('click', () => {
-            const passphrase = generatePassphrase();
-            if (passphrase) {
-                generatedPassphraseInput.value = passphrase;
+        // Copy to clipboard
+        copyPasswordBtn.addEventListener('click', async () => {
+            const textToCopy = generatedPasswordInput.value;
+            if (textToCopy) {
+                await copyToClipboard(textToCopy);
             }
         });
 
-         // Event listener for copy button
-         copyPassphraseBtn.addEventListener('click', () => {
-            const passphrase = generatedPassphraseInput.value;
-            if (passphrase) {
-                navigator.clipboard.writeText(passphrase)
-                    .then(() => {
-                         const originalHtml = copyPassphraseBtn.innerHTML; // Store full HTML including text
-                         copyPassphraseBtn.innerHTML = '<i class="bi bi-check-lg"></i> Tersalin!'; // Icon only
-                         setTimeout(() => {
-                              copyPassphraseBtn.innerHTML = originalHtml; // Restore full HTML
-                         }, 2000);
-                    })
-                    .catch(err => {
-                        console.error('Gagal menyalin passphrase:', err);
-                        alert('Gagal menyalin passphrase. Silakan salin manual.');
-                    });
-                } else {
-                    alert('Tidak ada passphrase yang bisa disalin.');
-                }
-            });
-
-         // Initial display of slider value
-         passphraseWordCountValueDisplay.textContent = passphraseWordCountInput.value;
-
+        // Generate initial password on load
+         passwordLengthValueSpan.textContent = passwordLengthInput.value; // Set initial value display
+        generatePassword(); // Generate initial password
 
     } else {
-        console.error("Elements for Passphrase Generator not found.");
+         console.error("Password Generator elements not found.");
     }
 
 
-}); // End DOMContentLoaded
+    // --- Passphrase Generator ---
+    const passphraseWordCountInput = document.getElementById('passphraseWordCount');
+    const passphraseWordCountValueSpan = document.getElementById('passphraseWordCountValue'); // Span to display value
+    const passphraseHyphensCheckbox = document.getElementById('passphraseHyphens'); // Keep this reference, maybe needed if we add it back as an option, but replaced by select
+    const passphraseCapitalizeCheckbox = document.getElementById('passphraseCapitalize');
+    const passphraseAddNumberCheckbox = document.getElementById('passphraseAddNumber');
+    const passphraseSeparatorSelect = document.getElementById('passphraseSeparator'); // New select element
+    const generatedPassphraseInput = document.getElementById('generatedPassphrase');
+    const copyPassphraseBtn = document.getElementById('copyPassphraseBtn');
+    const refreshPassphraseBtn = document.getElementById('refreshPassphraseBtn');
+    const passphraseAlert = document.getElementById('passphraseAlert');
+
+    // Check if Indonesian word list is loaded (from id-words.js)
+    const wordList = window.indonesianWords; // Access the global variable
+
+    if (!wordList || wordList.length < 100) { // Basic check for minimum list size
+         console.error("Indonesian word list not loaded or too small.");
+         if (passphraseAlert) {
+             passphraseAlert.textContent = "Daftar kata Bahasa Indonesia belum dimuat atau terlalu kecil (" + (wordList ? wordList.length : 0) + " kata). Generator passphrase dinonaktifkan.";
+             passphraseAlert.style.display = 'block';
+         }
+         // Disable passphrase generator UI if data is missing
+         if (passphraseWordCountInput) passphraseWordCountInput.disabled = true;
+         // if (passphraseHyphensCheckbox) passphraseHyphensCheckbox.disabled = true; // This checkbox is removed
+         if (passphraseCapitalizeCheckbox) passphraseCapitalizeCheckbox.disabled = true;
+         if (passphraseAddNumberCheckbox) passphraseAddNumberCheckbox.disabled = true;
+         if (passphraseSeparatorSelect) passphraseSeparatorSelect.disabled = true;
+         if (refreshPassphraseBtn) refreshPassphraseBtn.disabled = true;
+         if (copyPassphraseBtn) copyPassphraseBtn.disabled = true;
+    }
+
+    // Function to generate passphrase
+    function generatePassphrase() {
+        if (!wordList || wordList.length < 100) {
+             console.error("Word list not available for passphrase generation.");
+             return; // Exit if word list is not ready/sufficient
+        }
+
+        const numWords = parseInt(passphraseWordCountInput.value, 10);
+        const capitalize = passphraseCapitalizeCheckbox.checked;
+        const addNumber = passphraseAddNumberCheckbox.checked;
+        const separator = passphraseSeparatorSelect.value; // Get selected separator
+
+        // Ensure minimum word count
+        if (numWords < 5) {
+             // This should be handled by slider's min attribute, but double check
+             passphraseWordCountInput.value = 5;
+             passphraseWordCountValueSpan.textContent = 5;
+        }
+        passphraseAlert.style.display = 'none'; // Hide alert if it was showing
+
+
+        let selectedWords = [];
+        // Select random words using secureRandomInt
+        // Allow repetition for simplicity and potentially larger keyspace with smaller word lists
+        for (let i = 0; i < numWords; i++) {
+            const randomIndex = secureRandomInt(0, wordList.length - 1);
+            selectedWords.push(wordList[randomIndex]);
+        }
+
+        // Apply transformations
+        let passphraseParts = selectedWords.map(word => {
+            // Ensure lowercase if not capitalizing to avoid mixed case from source list
+            const baseWord = word.toLowerCase();
+            if (capitalize) {
+                return baseWord.charAt(0).toUpperCase() + baseWord.slice(1);
+            }
+            return baseWord;
+        });
+
+        // Add number if requested
+        if (addNumber) {
+            // Generate a random number (e.g., 0-9999) - adjust range as needed
+            const randomNumber = secureRandomInt(0, 9999); // Use a slightly larger range for numbers
+             const numberString = String(randomNumber);
+
+            // Insert the number randomly within the passphrase parts array
+            // Choose a random index to insert BEFORE the element at that index
+            // Index can be 0 (start) up to passphraseParts.length (end)
+            const insertionIndex = secureRandomInt(0, passphraseParts.length);
+
+            passphraseParts.splice(insertionIndex, 0, numberString);
+        }
+
+        const finalPassphrase = passphraseParts.join(separator);
+        generatedPassphraseInput.value = finalPassphrase;
+         // Ensure passphrase does not exceed maxlength set in HTML, although with slider ranges it's unlikely
+         generatedPassphraseInput.value = finalPassphrase.substring(0, generatedPassphraseInput.maxLength);
+
+    }
+
+
+     // Add event listeners for passphrase generator
+    if (passphraseWordCountInput && passphraseWordCountValueSpan && passphraseCapitalizeCheckbox && passphraseAddNumberCheckbox && passphraseSeparatorSelect && generatedPassphraseInput && copyPassphraseBtn && refreshPassphraseBtn && wordList && wordList.length >= 100) {
+
+        // Update displayed word count value when slider moves and regenerate
+        passphraseWordCountInput.addEventListener('input', () => {
+             passphraseWordCountValueSpan.textContent = passphraseWordCountInput.value;
+             generatePassphrase(); // Regenerate automatically on slider change
+        });
+
+        // Regenerate when options change (capitalize, add number, separator)
+         [passphraseCapitalizeCheckbox, passphraseAddNumberCheckbox, passphraseSeparatorSelect].forEach(element => {
+             element.addEventListener('change', generatePassphrase);
+         });
+
+        // Regenerate on button click
+        refreshPassphraseBtn.addEventListener('click', generatePassphrase);
+
+        // Copy to clipboard
+        copyPassphraseBtn.addEventListener('click', async () => {
+            const textToCopy = generatedPassphraseInput.value;
+            if (textToCopy) {
+                await copyToClipboard(textToCopy);
+            }
+        });
+
+        // Generate initial passphrase on load
+         passphraseWordCountValueSpan.textContent = passphraseWordCountInput.value; // Set initial value display
+        generatePassphrase(); // Generate initial passphrase
+
+    } else {
+        if (!wordList || wordList.length < 100) {
+            console.warn("Passphrase Generator disabled due to missing/small word list.");
+            // Alert message already set above
+        } else {
+             console.error("Passphrase Generator elements not found.");
+        }
+    }
+
+    // --- Initial Setup ---
+    // No need for separate initial calls here, they are handled within each section's event listeners
+    // triggered by the initial state or DOMContentLoaded.
+
+});
